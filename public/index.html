@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>초급일본어 데모</title>
+  <style>
+    :root { --kakao: #FEE500; --bg: #b2c7d9; --text: #191919; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+    body { background: #3c3c3c; display: flex; align-items: center; justify-content: center; }
+    .phone {
+      width: 390px; max-width: 100%; height: 720px; max-height: 100vh;
+      background: var(--bg); display: flex; flex-direction: column;
+      border-radius: 12px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.35);
+    }
+    header {
+      background: var(--kakao); color: var(--text); padding: 14px 16px;
+      font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px;
+    }
+    header .dot { width: 8px; height: 8px; background: #3c1e1e; border-radius: 50%; }
+    #log {
+      flex: 1; overflow-y: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .row { display: flex; }
+    .row.me { justify-content: flex-end; }
+    .row.bot { justify-content: flex-start; }
+    .bubble {
+      max-width: 78%; white-space: pre-wrap; word-break: break-word;
+      padding: 10px 12px; border-radius: 16px; font-size: 14px; line-height: 1.45;
+    }
+    .me .bubble { background: var(--kakao); color: var(--text); border-top-right-radius: 4px; }
+    .bot .bubble { background: #fff; color: var(--text); border-top-left-radius: 4px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 8px; }
+    .chip {
+      background: #fff; border: 1px solid #d4d4d4; border-radius: 16px;
+      padding: 6px 12px; font-size: 12px; cursor: pointer;
+    }
+    .composer {
+      background: #fff; display: flex; gap: 8px; padding: 10px;
+      border-top: 1px solid #d0d0d0;
+    }
+    .composer input { flex: 1; border: none; outline: none; font-size: 14px; padding: 8px; }
+    .composer button {
+      background: var(--kakao); border: none; border-radius: 8px;
+      padding: 8px 14px; font-weight: 700; cursor: pointer;
+    }
+    .hint { font-size: 12px; color: #4a5a68; text-align: center; padding: 4px 0 8px; }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <header><span class="dot"></span> 초급일본어</header>
+    <div id="log"></div>
+    <div class="chips" id="chips"></div>
+    <div class="hint">GitHub Pages 데모 · 키 없이 예시 일기</div>
+    <form class="composer" id="form">
+      <input id="text" autocomplete="off" placeholder="일기 또는 일본어 답" />
+      <button type="submit">전송</button>
+    </form>
+  </div>
+  <script>
+    const DIARY = "오늘 회사에서 일이 별로 없었다.\n점심으로 돈까스를 먹었다.\n집에 와서 게임을 했다.";
+    const PUZZLE = {
+      cloze: "오늘 [　　]에서 일이 별로 없었다.\n점심으로 [　　]를 먹었다.\n집에 와서 [　　]을 했다.",
+      remaining: [
+        { ko: "회사", jp: "会社", reading: "かいしゃ" },
+        { ko: "돈까스", jp: "とんかつ", reading: "とんかつ" },
+        { ko: "게임", jp: "ゲーム", reading: "ゲーム" }
+      ],
+      reveal: "오늘 会社(かいしゃ)에서 일이 별로 없었다.\n점심으로 とんかつ를 먹었다.\n집에 와서 ゲーム을 했다.",
+      options: ["会社", "とんかつ", "ゲーム", "学校", "ラーメン"]
+    };
+
+    let remaining = PUZZLE.remaining.map((b) => ({ ...b }));
+
+    const log = document.getElementById("log");
+    const chips = document.getElementById("chips");
+    const form = document.getElementById("form");
+    const input = document.getElementById("text");
+
+    function addBubble(text, who) {
+      const row = document.createElement("div");
+      row.className = "row " + who;
+      const b = document.createElement("div");
+      b.className = "bubble";
+      b.textContent = text;
+      row.appendChild(b);
+      log.appendChild(row);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function renderChips(labels) {
+      chips.innerHTML = "";
+      labels.forEach((label) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chip";
+        btn.textContent = label;
+        btn.onclick = () => send(label);
+        chips.appendChild(btn);
+      });
+    }
+
+    function puzzleChips() {
+      return [...PUZZLE.options, "정답 보기", "다른 일기"];
+    }
+
+    function norm(s) {
+      return (s || "").replace(/\s+/g, "").toLowerCase();
+    }
+
+    function matchBlank(token, blank) {
+      const t = norm(token);
+      return t === norm(blank.jp) || (blank.reading && t === norm(blank.reading));
+    }
+
+    function send(utterance) {
+      const text = (utterance || "").trim();
+      if (!text) return;
+      addBubble(text, "me");
+      input.value = "";
+
+      if (text === "다른 일기") {
+        remaining = PUZZLE.remaining.map((b) => ({ ...b }));
+        addBubble("새 한국어 일기나 할 일을 보내 주세요.\n(이 페이지는 데모라 같은 예시 빈칸이 다시 나옵니다.)", "bot");
+        renderChips(["예시 일기 보내기"]);
+        return;
+      }
+      if (text === "예시 일기 보내기") {
+        remaining = PUZZLE.remaining.map((b) => ({ ...b }));
+        addBubble("한국어는 그대로 두고, 빈칸만 일본어로 채우세요.\n지금 Lv.1 — 명사만 일본어로 채웁니다.\n\n" + PUZZLE.cloze, "bot");
+        addBubble("Lv.1 빈칸 " + remaining.length + "개. 칩을 누르거나 일본어를 적어 보내 주세요.\n(데모: GitHub Pages)", "bot");
+        renderChips(puzzleChips());
+        return;
+      }
+      if (text === "정답 보기") {
+        addBubble(PUZZLE.reveal, "bot");
+        remaining = [];
+        renderChips(["다른 일기", "예시 일기 보내기"]);
+        return;
+      }
+      if (remaining.length && text.length < 40) {
+        const tokens = text.split(/[\s,，/·]+/).filter(Boolean);
+        const wrong = [];
+        tokens.forEach((tok) => {
+          const i = remaining.findIndex((b) => matchBlank(tok, b));
+          if (i < 0) wrong.push(tok);
+          else remaining.splice(i, 1);
+        });
+        if (!remaining.length) {
+          addBubble("맞았습니다. 한국어 속에 일본어가 섞였습니다.", "bot");
+          addBubble(PUZZLE.reveal, "bot");
+          renderChips(["다른 일기", "예시 일기 보내기"]);
+          return;
+        }
+        let msg = "남은 빈칸 " + remaining.length + "개.";
+        if (wrong.length) msg += " 아닌 것: " + wrong.join(", ");
+        addBubble(msg, "bot");
+        renderChips(puzzleChips());
+        return;
+      }
+      remaining = PUZZLE.remaining.map((b) => ({ ...b }));
+      addBubble("한국어는 그대로 두고, 빈칸만 일본어로 채우세요.\n지금 Lv.1 — 명사만 일본어로 채웁니다.\n\n" + PUZZLE.cloze, "bot");
+      addBubble("Lv.1 빈칸 " + remaining.length + "개. 칩을 누르거나 일본어를 적어 보내 주세요.\n(데모: GitHub Pages)", "bot");
+      renderChips(puzzleChips());
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      send(input.value);
+    });
+
+    addBubble("내 일상 한국어에 일본어를 조금씩 넣습니다.\n\n일기를 보내 주세요. 기본은 Lv.1 명사 빈칸입니다.", "bot");
+    send(DIARY);
+  </script>
+</body>
+</html>
