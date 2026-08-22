@@ -1,0 +1,9 @@
+{
+  "name": "transition-language",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postCreateCommand": "curl -LsSf https://astral.sh/uv/install.sh | sh && . $HOME/.local/bin/env && uv sync --dev",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": { "label": "Kakao mockup", "onAutoForward": "notify" }
+  }
+}

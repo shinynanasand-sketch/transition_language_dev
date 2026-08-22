@@ -1,0 +1,17 @@
+[project]
+name = "kakaolanguage"
+version = "0.1.0"
+description = "Beginner Japanese Kakao chatbot MVP with HTML mockup"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.141.1",
+    "openai>=3.3.1",
+    "python-dotenv>=1.2.3",
+    "uvicorn>=0.52.4",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+]
